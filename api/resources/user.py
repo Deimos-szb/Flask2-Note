@@ -16,9 +16,13 @@ class UserResource(Resource):
         parser.add_argument("username", required=True)
         user_data = parser.parse_args()
         user = UserModel.query.get(user_id)
+        if user is None:
+            abort(404, error="User not found")
         user.username = user_data["username"]
         user.save()
         return user_schema.dump(user), 200
+
+
 
     @auth.login_required
     def delete(self, user_id):
