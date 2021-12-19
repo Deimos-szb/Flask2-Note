@@ -1,96 +1,65 @@
-from api import Resource, abort, reqparse, auth
+from api import Resource, abort, reqparse, auth, g
 from api.models.user import UserModel
 from api.schemas.user import user_schema, users_schema, UserSchema, UserRequestSchema
 from flask_apispec.views import MethodResource
 from flask_apispec import marshal_with, use_kwargs, doc
+from webargs import fields
 
-@doc(description='Api for notes.', tags=['Users'])
+@doc(description='Api for users.', tags=['Users'])
 class UserResource(MethodResource):
-
-    @marshal_with(UserSchema, code=200, description="Get user by id")
+    @doc(summary="Get User by id", description="Return User with unique id")
+    @doc(responses={404: {"description": "User not found"}})
+    @marshal_with(UserSchema, code=200)
     def get(self, user_id):
-        # language=YAML
-        """
-        Get User by id
-        ---
-        tags:
-            - Users
-        parameters:
-             - in: path
-               name: user_id
-               type: integer
-               required: true
-               default: 1
-        responses:
-              200:
-               description: A single user item
-               schema:
-                   id: User
-                   properties:
-                       id:
-                           type: integer
-                           description: user id
-                           default: 1
-                       username:
-                           type: string
-                           description: The name of the user
-                           default: Steven Wilson
-                       is_staff:
-                           type: boolean
-                           description: user is staff
-                           default: false
-                       role:
-                           type: string
-                           description: user's role
-                           default: simple_user
-        """
-
         user = UserModel.query.get(user_id)
         if user is None:
             abort(404, error=f"User with id={user_id} not found")
         return user, 200
 
     @auth.login_required(role="admin")
-    def put(self, user_id):
-        parser = reqparse.RequestParser()
-        parser.add_argument("username", required=True)
-        user_data = parser.parse_args()
+    @doc(security=[{"basicAuth": []}])
+    @doc(summary="Edit user by id")
+    @doc(responses={404: {"description": "User not found"}})
+    @use_kwargs({"username": fields.Str(), "role": fields.Str()})
+    @marshal_with(UserSchema, code=201)
+    def put(self, user_id, **kwargs):
         user = UserModel.query.get(user_id)
         if user is None:
             abort(404, error="User not found")
-        user.username = user_data["username"]
+        user.username = kwargs.get("username") or user.username
+        user.role = kwargs.get("role") or user.role
         user.save()
-        return user_schema.dump(user), 200
+        return user, 201
 
     @auth.login_required
+    @doc(security=[{"basicAuth": []}])
+    @doc(summary="Delete user by id", description="Delete unique user")
+    @doc(responses={200: {"description": "User Deleted"}})
+    @doc(responses={401: {"description": "Not authorization"}})
+    @doc(responses={404: {"description": "User not found"}})
     def delete(self, user_id):
         user = UserModel.query.get(user_id)
+        if user is None:
+            abort(404, error=f"User with id={user_id} not found")
+        if user_id != g.user.id and g.user.role != "admin":
+            abort(401, error="Not authorization")
         user.delete()
         return f"User with id={user_id} was deleted", 200
-        # raise NotImplemented  # не реализовано!
 
-@doc(description='Api for notes.', tags=['Users'])
+
+@doc(description='Api for users.', tags=['Users'])
 class UsersListResource(MethodResource):
+    @doc(summary="Get list of all users")
+    @marshal_with(UserSchema(many=True), code=200)
     def get(self):
-        # language=YAML
-        """
-               Get all Users
-               ---
-               tags:
-                   - Users
-               """
-
         users = UserModel.query.all()
-        return users_schema.dump(users), 200
-    @doc(description="Create new User")
+        return users, 200
+
+    @doc(summary="Create new User")
+    @doc(responses={400: {"description": "User already exist"}})
     @marshal_with(UserSchema, code=201)
     @use_kwargs(UserRequestSchema, location=('json'))
     def post(self, **kwargs):
-        # parser = reqparse.RequestParser()
-        # parser.add_argument("username", required=True)
-        # parser.add_argument("password", required=True)
-        # user_data = parser.parse_args()
-        # user = UserModel(**user_data)
         user = UserModel(**kwargs)
         user.save()
         if not user.id:

@@ -3,43 +3,58 @@ from api.models.tag import TagModel
 from api.schemas.tag import TagSchema, TagRequestSchema, tag_schema, tags_schema
 from flask_apispec.views import MethodResource
 from flask_apispec import marshal_with, use_kwargs, doc
+from webargs import fields
 
-@doc(description='Api for tag.', tags=['Tag'])
+@doc(description='Api for tag.', tags=['Tags'])
 class TagResource(MethodResource):
 
-    @marshal_with(TagSchema, code=200, description="Get tag by id")
+    @doc(summary="Get tag by id")
+    @doc(responses={404: "Tag not found"})
+    @marshal_with(TagSchema, code=200)
     def get(self, tag_id):
-
         tag = TagModel.query.get(tag_id)
         if tag is None:
             abort(404, error=f"Tag with id={tag_id} not found")
         return tag, 200
 
-    def put(self, tag_id):
-        parser = reqparse.RequestParser()
-        parser.add_argument("name", required=True)
-        tag_data = parser.parse_args()
+    @auth.login_required(role="admin")
+    @doc(security=[{"basicAuth": []}])
+    @doc(summary="Edit tag by id")
+    @doc(responses={404: "Tag not found"})
+    @marshal_with(TagSchema, code=201)
+    @use_kwargs({"name": fields.Str(required=True)}, location=("json"))
+    def put(self, tag_id, **kwargs):
         tag = TagModel.query.get(tag_id)
         if tag is None:
             abort(404, error="Tag not found")
-        tag.name = tag_data["name"]
+        tag.name = kwargs["name"]
         tag.save()
-        return tag_schema.dump(tag), 200
+        return tag, 201
 
-    @auth.login_required
+    @auth.login_required(role="admin")
+    @doc(security=[{"basicAuth": []}])
+    @doc(summary="Delete tag by id")
+    @doc(responses={404: "Tag not found"})
     def delete(self, tag_id):
         tag = TagModel.query.get(tag_id)
+        if tag is None:
+            abort(404, error="Tag not found")
         tag.delete()
         return f"Tag with id={tag_id} was deleted", 200
 
 
-@doc(description='Api for tag.', tags=['Tag'])
+@doc(description='Api for tag.', tags=['Tags'])
 class TagListResource(MethodResource):
+    @doc(summary="Get all tags")
+    @marshal_with(TagSchema(many=True), code=200)
     def get(self):
         tags = TagModel.query.all()
-        return tags_schema.dump(tags), 200    
-    
-    @doc(description="Create new Tag")
+        return tags, 200
+
+    @auth.login_required(role="admin")
+    @doc(security=[{"basicAuth": []}])
+    @doc(summary="Create new Tag")
+    @doc(responses={400: "Tag already exist"})
     @marshal_with(TagSchema, code=201)
     @use_kwargs(TagRequestSchema, location=('json'))
     def post(self, **kwargs):

@@ -16,6 +16,7 @@ api.add_resource(UsersListResource,
 api.add_resource(UserResource,
                  '/users/<int:user_id>')  # GET, PUT, DELETE
 
+
 api.add_resource(TokenResource,
                  '/auth/token')  # GET
 
@@ -32,11 +33,16 @@ api.add_resource(TagResource,
                  '/tags/<int:tag_id>')  # GET, PUT, DELETE
 
 api.add_resource(NoteSetTagsResource,
-                 '/notes/<int:note_id>/add_tags')  # PUT
+                 '/notes/<int:note_id>/tags')  # PUT, DELETE
 
 
 docs.register(UserResource)
 docs.register(UsersListResource)
+docs.register(NoteResource)
+docs.register(NotesListResource)
+docs.register(TagResource)
+docs.register(TagListResource)
+docs.register(NoteSetTagsResource)
 
 if __name__ == '__main__':
     app.run(debug=Config.DEBUG, port=Config.PORT)

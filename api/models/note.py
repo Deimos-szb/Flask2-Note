@@ -13,7 +13,9 @@ class NoteModel(db.Model):
     author_id = db.Column(db.Integer, db.ForeignKey(UserModel.id))
     text = db.Column(db.String(255), unique=False, nullable=False)
     private = db.Column(db.Boolean(), default=True, nullable=False)
-    tags = db.relationship(TagModel, secondary=tags, lazy='subquery', backref=db.backref('notes', lazy=True))
+    tags = db.relationship(TagModel, secondary=tags, lazy='subquery',
+                           backref=db.backref('notes', lazy=True),
+                           cascade="all, delete")
 
     def save(self):
         db.session.add(self)

@@ -22,30 +22,41 @@ class TestUsers(TestCase):
             # create all tables
             db.create_all()
 
-    def test_user_creation(self):
         user_data = {
             "username": 'admin',
-            'password': 'admin'
+            'password': 'admin',
+            "role": "admin",
+        }
+        self.create_and_auth_user(user_data)
+
+    def create_and_auth_user(self, user_data):
+        user = UserModel(**user_data)
+        user.save()
+        self.user = user
+        # "login:password" --> b64 --> 'ksjadhsadfh474=+d'
+        self.headers = {
+            'Authorization': 'Basic ' + b64encode(
+                f"{user_data['username']}:{user_data['password']}".encode('ascii')).decode('utf-8')
+        }
+
+    def test_user_creation(self):
+        user_data = {
+            "username": 'alex',
+            'password': 'alex'
         }
         res = self.client.post('/users',
                                data=json.dumps(user_data),
                                content_type='application/json')
         data = json.loads(res.data)
         self.assertEqual(res.status_code, 201)
-        self.assertIn('admin', data.values())
+        self.assertIn('alex', data.values())
 
     def test_user_get_by_id(self):
-        user_data = {
-            "username": 'admin',
-            'password': 'admin'
-        }
-        user = UserModel(**user_data)
-        user.save()
-        user_id = user.id
+        user_id = self.user.id
         response = self.client.get(f'/users/{user_id}')
         data = json.loads(response.data)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(data["username"], user_data["username"])
+        self.assertEqual(data["username"], self.user.username)
 
     def test_user_not_found_by_id(self):
         response = self.client.get('/users/2')
@@ -53,10 +64,6 @@ class TestUsers(TestCase):
 
     def test_users_get(self):
         users_data = [
-            {
-                "username": 'admin',
-                'password': 'admin'
-            },
             {
                 "username": 'ivan',
                 'password': '12345'
@@ -69,45 +76,45 @@ class TestUsers(TestCase):
         res = self.client.get('/users')
         data = json.loads(res.data)
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(data[0]["username"], users_data[0]["username"])
-        self.assertEqual(data[1]["username"], users_data[1]["username"])
+        self.assertEqual(data[0]["username"], 'admin')
+        self.assertEqual(data[1]["username"], users_data[0]["username"])
 
     def test_user_not_found(self):
         """
         Получение несуществующего пользователя
         """
-        res = self.client.get('/users/1')
+        res = self.client.get('/users/3')
         self.assertEqual(res.status_code, 404)
 
     def test_unique_username(self):
         """
         Проверяет невозможность создания нескольких пользователей с одинаковым username
         """
-        pass
+        user_data = {
+            "username": 'admin',
+            'password': 'admin'
+        }
+
+        res = self.client.post('/users',
+                               data=json.dumps(user_data),
+                               content_type='application/json')
+        data = json.loads(res.data)
+        self.assertEqual(res.status_code, 400)
+        self.assertIn('admin', data['error'])
+
 
     def test_edit_user(self):
         """
         Редактирование пользователя
         """
-        user_data = {
-            "username": 'admin',
-            'password': 'admin',
-            "role": "admin"
-        }
-        user = UserModel(**user_data)
-        user.save()
-        headers = {
-            'Authorization': 'Basic ' + b64encode(
-                f"{user_data['username']}:{user_data['password']}".encode('ascii')).decode('utf-8')}
-        user_id = user.id
         new_name = {"username": "Alex"}
-        response = self.client.put(f'/users/{user_id}',
-                                   headers=headers,
+        response = self.client.put(f'/users/{self.user.id}',
+                                   headers=self.headers,
                                    data=json.dumps(new_name),
                                    content_type='application/json'
                                    )
         data = json.loads(response.data)
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 201)
         self.assertEqual(data["username"], "Alex")
 
 
@@ -115,7 +122,13 @@ class TestUsers(TestCase):
         """
         Удаление пользователя
         """
-        pass
+        user_id = self.user.id
+        res = self.client.delete(f'/users/{self.user.id}',
+                                   headers=self.headers,
+                                   )
+        user = UserModel.query.get(user_id)
+        self.assertEqual(res.status_code, 200)
+        self.assertIs(None, user)
 
     def tearDown(self):
         with self.app.app_context():
@@ -139,7 +152,8 @@ class TestNotes(TestCase):
         # Создаем и залогиниваем пользователя
         user_data = {
             "username": 'admin',
-            'password': 'admin'
+            'password': 'admin',
+            "role": "admin",
         }
         self.create_and_auth_user(user_data)
 
@@ -232,7 +246,11 @@ class TestNotes(TestCase):
         """
         Получение заметки с несуществующим id
         """
-        pass
+        res = self.client.get('/notes/1', headers=self.headers)
+        data = json.loads(res.data)
+
+        self.assertEqual(res.status_code, 404)
+        self.assertIn("1", data["error"])
 
 
 
@@ -270,6 +288,31 @@ class TestNotes(TestCase):
         """
         Редактирование заметки
         """
+        note_data = {
+                "text": 'Public Test note 1',
+                "private": False
+            }
+
+
+        note = NoteModel(author_id=self.user.id, **note_data)
+        note.save()
+
+        new_note_data = {
+            "text": 'Public Test note 2',
+            "private": True
+        }
+
+        res = self.client.put(f'/notes/{note.id}',
+                              headers=self.headers,
+                              data=json.dumps(new_note_data),
+                              content_type='application/json'
+                              )
+        data = json.loads(res.data)
+
+        self.assertEqual(res.status_code, 201)
+        self.assertEqual(data["text"], new_note_data["text"])
+        self.assertEqual(data["private"], new_note_data["private"])
+
 
     def test_delete_note(self):
         """
@@ -292,7 +335,7 @@ class TestNotes(TestCase):
         res = self.client.delete('/notes/2', headers=self.headers)
         data = json.loads(res.data)
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(data["text"], notes_data[1]["text"])
+        self.assertEqual(data, "Note was deleted")
 
     def test_delete_not_found_note(self):
         """
