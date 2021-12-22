@@ -1,4 +1,5 @@
 from api import db
+from sqlalchemy.sql import expression
 from api.models.user import UserModel
 from api.models.tag import TagModel
 
@@ -16,6 +17,8 @@ class NoteModel(db.Model):
     tags = db.relationship(TagModel, secondary=tags, lazy='subquery',
                            backref=db.backref('notes', lazy=True),
                            cascade="all, delete")
+    archive = db.Column(db.Boolean(), default=False, server_default=expression.false(), nullable=False)
+
 
     def save(self):
         db.session.add(self)

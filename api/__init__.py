@@ -10,6 +10,7 @@ from flask_httpauth import HTTPBasicAuth
 # from apispec import APISpec
 # from apispec.ext.marshmallow import MarshmallowPlugin
 from flask_apispec.extension import FlaskApiSpec
+# from flask_mail import Mail, Message
 
 
 app = Flask(__name__)
@@ -23,6 +24,13 @@ ma = Marshmallow(app)
 auth = HTTPBasicAuth()
 # swagger = Swagger(app)
 docs = FlaskApiSpec(app)
+# mail = Mail(app)
+
+# msg = Message('test subject', sender = Config.ADMINS[0], recipients = Config.ADMINS)
+# msg.body = 'text body'
+# msg.html = '<b>HTML</b> body'
+# with app.app_context():
+#    mail.send(msg)
 
 
 @auth.verify_password

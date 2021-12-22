@@ -16,6 +16,10 @@ class UserSchema(ma.SQLAlchemySchema):
     username = ma.auto_field()
     is_staff = ma.auto_field()
     role = ma.auto_field()
+    _links = ma.Hyperlinks({
+        'self': ma.URLFor('userresource', values=dict(user_id="<id>")),
+        'collection': ma.URLFor('userslistresource')
+    })
 
 
 # json --> dict(**kwargs)

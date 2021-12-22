@@ -1,10 +1,11 @@
-from api import auth, abort, g, Resource, reqparse
+from api import auth, abort, g, Resource, reqparse, api
 from api.models.note import NoteModel
 from api.models.tag import TagModel
 from api.schemas.note import NoteSchema, NoteRequestSchema, NoteEditSchema, note_schema, notes_schema
 from webargs import fields
 from flask_apispec import marshal_with, use_kwargs, doc
 from flask_apispec.views import MethodResource
+from helpers.shortcuts import get_or_404
 
 @doc(description="API for Notes", tags=["Notes"])
 class NoteResource(MethodResource):
@@ -89,7 +90,6 @@ class NotesListResource(MethodResource):
         note.save()
         return note, 201
 
-
 @doc(tags=['Notes'])
 class NoteSetTagsResource(MethodResource):
     @auth.login_required()
@@ -136,5 +136,41 @@ class NoteSetTagsResource(MethodResource):
                 note.tags.remove(tag)
             except ValueError:
                 pass
+        note.save()
+        return note, 200
+
+
+@doc(tags=['Notes'])
+class NoteFilterResource(MethodResource):
+    @doc(summary="Get all public notes of unique User")
+    @marshal_with(NoteSchema(many=True), code=200)
+    @use_kwargs({"username": fields.Str()}, location=('query'))
+    def get(self, **kwargs):
+        notes = NoteModel.query.filter_by(private = False).filter(NoteModel.author.has(**kwargs)).all()
+        return notes, 200
+
+
+@api.resource('/notes/<int:note_id>/archive') #DELETE
+@doc(tags=['Notes'])
+class NoteToArchive(MethodResource):
+    @doc(summary="Move Note to archive")
+    @marshal_with(NoteSchema, code=200)
+    def delete(self, note_id):
+        note = get_or_404(NoteModel, note_id)
+        note.archive = True
+        note.save()
+        return note, 200
+
+@api.resource('/notes/<int:note_id>/restore') #PUT
+@doc(tags=['Notes'])
+class NoteFromArchive(MethodResource):
+    @doc(summary="Restore Note from archive")
+    @marshal_with(NoteSchema, code=200)
+    def put(self, note_id):
+        # author = g.user
+        note = get_or_404(NoteModel, note_id)
+        # if note.author != author:
+        #     abort(403, error="Forbidden for this User")
+        note.archive = False
         note.save()
         return note, 200

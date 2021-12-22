@@ -16,6 +16,12 @@ class NoteSchema(ma.SQLAlchemySchema):
     private = ma.auto_field()
     author = ma.Nested(UserSchema())
     tags = ma.Nested(TagSchema(many=True))
+    _links = ma.Hyperlinks({
+        'self': ma.URLFor('noteresource', values=dict(note_id="<id>")),
+        'collection': ma.URLFor('noteslistresource')
+    })
+    archive = ma.auto_field()
+
 
 class NoteRequestSchema(ma.SQLAlchemySchema):
     class Meta:
