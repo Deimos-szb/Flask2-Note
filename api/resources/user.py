@@ -4,6 +4,7 @@ from api.schemas.user import user_schema, users_schema, UserSchema, UserRequestS
 from flask_apispec.views import MethodResource
 from flask_apispec import marshal_with, use_kwargs, doc
 from webargs import fields
+from flask_babel import _
 
 @doc(description='Api for users.', tags=['Users'])
 class UserResource(MethodResource):
@@ -13,7 +14,7 @@ class UserResource(MethodResource):
     def get(self, user_id):
         user = UserModel.query.get(user_id)
         if user is None:
-            abort(404, error=f"User with id={user_id} not found")
+            abort(404, error=_("User with id=%(user_id)s not found", user_id=user_id))
         return user, 200
 
     @auth.login_required(role="admin")
@@ -40,7 +41,7 @@ class UserResource(MethodResource):
     def delete(self, user_id):
         user = UserModel.query.get(user_id)
         if user is None:
-            abort(404, error=f"User with id={user_id} not found")
+            abort(404, error=_("User with id=%(user_id)s not found", user_id=user_id))
         if user_id != g.user.id and g.user.role != "admin":
             abort(401, error="Not authorization")
         user.delete()
@@ -65,3 +66,15 @@ class UsersListResource(MethodResource):
         if not user.id:
             abort(400, error=f"User with username:{user.username} already exist")
         return user, 201
+
+@doc(description='Api for users.', tags=['Users'])
+class UsersSearchResource(MethodResource):
+    @doc(summary="Get list of all users by search")
+    @use_kwargs({"username": fields.Str()}, location=('query'))
+    @marshal_with(UserSchema(many=True), code=200)
+    def get(self, **kwargs):
+        if kwargs.get("username"):
+            users = UserModel.query.filter(UserModel.username.like(f'%{kwargs["username"]}%')).all()
+        else:
+            users = UserModel.query.all()
+        return users, 200

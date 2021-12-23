@@ -2,6 +2,7 @@ alembic==1.7.5
 aniso8601==9.0.1
 apispec==5.1.1
 attrs==21.2.0
+Babel==2.9.1
 backcall==0.2.0
 blinker==1.4
 click==8.0.3
@@ -9,6 +10,7 @@ decorator==5.1.0
 flasgger==0.9.5
 Flask==1.1.2
 flask-apispec==0.11.0
+Flask-Babel==2.0.0
 Flask-HTTPAuth==4.2.0
 Flask-Mail==0.9.1
 flask-marshmallow==0.14.0

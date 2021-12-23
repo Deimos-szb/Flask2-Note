@@ -6,6 +6,7 @@ from webargs import fields
 from flask_apispec import marshal_with, use_kwargs, doc
 from flask_apispec.views import MethodResource
 from helpers.shortcuts import get_or_404
+from flask_babel import _
 
 @doc(description="API for Notes", tags=["Notes"])
 class NoteResource(MethodResource):
@@ -23,7 +24,8 @@ class NoteResource(MethodResource):
         author = g.user
         note = NoteModel.query.get(note_id)
         if not note:
-            abort(404, error=f"Note with id={note_id} not found")
+            # abort(404, error=f"Note with id={note_id} not found")
+            abort(404, error=_("Note with id=%(note_id)s not found", note_id=note_id))
         if note.author.id != author.id:
             abort(403, error="Forbidden for this User")
         return note, 200

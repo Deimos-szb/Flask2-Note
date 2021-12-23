@@ -12,6 +12,7 @@ class UserModel(db.Model):
     notes = db.relationship('NoteModel', backref='author', lazy='dynamic', cascade="all, delete")
     is_staff = db.Column(db.Boolean(), default=False, server_default="false", nullable=False)
     role = db.Column(db.String(32), nullable=False, server_default="simple_user", default="simple_user")
+    # avatar = 'URL'   # base64 jpeg <--> string
 
     def __init__(self, username, password, role="simple_user"):
         self.username = username
